@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum SubmissionStatus {
+  PENDING
+  SUBMITTED
+}
+
+model User {
+  id            String       @id @default(uuid())
+  name          String
+  email         String       @unique
+  passwordHash  String
+  role          Role         @default(STUDENT)
+  createdAt     DateTime     @default(now())
+  
+  // Relations
+  groupMembers  GroupMember[]
+  createdGroups Group[]      @relation("GroupCreator")
+  assignments   Assignment[] @relation("AssignmentCreator")
+}
+
+model Group {
+  id          String        @id @default(uuid())
+  name        String
+  createdAt   DateTime      @default(now())
+  createdById String
+  
+  createdBy   User          @relation("GroupCreator", fields: [createdById], references: [id])
+  members     GroupMember[]
+  submissions Submission[]
+}
+
+model GroupMember {
+  id      String @id @default(uuid())
+  groupId String
+  userId  String
+  
+  group   Group  @relation(fields: [groupId], references: [id])
+  user    User   @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+}
+
+model Assignment {
+  id           String       @id @default(uuid())
+  title        String
+  description  String?
+  dueDate      DateTime
+  onedriveLink String
+  createdAt    DateTime     @default(now())
+  createdById  String
+  
+  createdBy    User         @relation("AssignmentCreator", fields: [createdById], references: [id])
+  submissions  Submission[]
+}
+
+model Submission {
+  id           String           @id @default(uuid())
+  assignmentId String
+  groupId      String
+  status       SubmissionStatus @default(PENDING)
+  submittedAt  DateTime?
+  
+  assignment   Assignment       @relation(fields: [assignmentId], references: [id])
+  group        Group            @relation(fields: [groupId], references: [id])
+
+  @@unique([assignmentId, groupId])
+}
